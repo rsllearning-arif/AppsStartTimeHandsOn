@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="course_options">
+        <item>Select course</item>
+        <item>Bachelor\'s</item>
+        <item>Master\'s</item>
+        <item>P.hd</item>
+    </array>
+
+    <array name="grades">
+        <item>Select grade</item>
+        <item>A (>= 90)</item>
+        <item>B (>= 80)</item>
+        <item>C (>= 70)</item>
+        <item>D (>= 60)</item>
+        <item>E (>= 50)</item>
+        <item>F (less than 50)</item>
+    </array>
+</resources>
