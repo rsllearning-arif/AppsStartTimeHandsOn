@@ -7,7 +7,7 @@
 
     <style name="Theme.AppsStartTimeHandsOn" parent="Base.Theme.AppsStartTimeHandsOn" />
 
-    <style name="SplashScreenTheme" parent="Theme.AppsStartTimeHandsOn">
+    <style name="SplashScreenTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/ic_launcher_foreground</item>
         <item name="android:windowFullscreen">true</item>
     </style>
