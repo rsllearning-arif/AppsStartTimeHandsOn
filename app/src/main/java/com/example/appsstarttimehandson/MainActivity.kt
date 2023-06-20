@@ -1,16 +1,27 @@
 package com.example.appsstarttimehandson
 
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.text.Editable
+import android.renderscript.Allocation
+import android.renderscript.Element
+import android.renderscript.RenderScript
+import android.renderscript.ScriptIntrinsicBlur
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.Spinner
-import android.widget.TextView
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var imageView: ImageView
     private lateinit var name: EditText
     private lateinit var email: EditText
     private lateinit var phoneNumber: EditText
@@ -23,9 +34,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var qualification: EditText
     private lateinit var school: EditText
     private lateinit var grade: Spinner
-    private lateinit var courseSelected: Spinner
+    private lateinit var course: Spinner
     private lateinit var submitButton: Button
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,12 +47,22 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener {
                 if (isFormDataValid()) {
                     Snackbar.make(this, "Form Submitted successfully", Snackbar.LENGTH_LONG).show()
+                    val intent = Intent(this@MainActivity, RestActivity::class.java)
+                    startActivity(intent)
                 }
             }
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        reportFullyDrawn()
+    }
+
     private fun setupViews() {
+        imageView = findViewById<ImageView?>(R.id.image_view).apply {
+            setImageBitmap(getImageAfterEdit())
+        }
         name = findViewById(R.id.name)
         email = findViewById(R.id.email)
         phoneNumber = findViewById(R.id.phone_number)
@@ -55,13 +75,77 @@ class MainActivity : AppCompatActivity() {
         qualification = findViewById(R.id.qualification)
         school = findViewById(R.id.school)
         grade = findViewById(R.id.grades)
-        courseSelected = findViewById(R.id.course_selection)
+        course = findViewById(R.id.course_selection)
+    }
+
+    private fun getImageAfterEdit(): Bitmap {
+        // Heavy operation - image processing
+        val bitmap =  BitmapFactory.decodeResource(resources, R.drawable.college)
+        val filteredImage = applyFilter(bitmap)
+        return applyGaussianBlur(filteredImage, 10F)
+    }
+
+    private fun applyFilter(bitmap: Bitmap): Bitmap {
+        // Apply a grayscale filter to the image
+        val matrix = ColorMatrix().apply {
+            setSaturation(0f)
+        }
+        val filter = ColorMatrixColorFilter(matrix)
+
+        val paint = Paint().apply {
+            colorFilter = filter
+        }
+
+        val editedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(editedBitmap)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        return editedBitmap
+    }
+
+    private fun applyGaussianBlur(imageBitmap: Bitmap, radius: Float): Bitmap {
+        // Create a RenderScript context
+        val rsContext = RenderScript.create(applicationContext)
+
+        // Create an input allocation from the image bitmap
+        val inputAllocation = Allocation.createFromBitmap(rsContext, imageBitmap)
+
+        // Create an output allocation for the blurred image
+        val outputAllocation = Allocation.createTyped(rsContext, inputAllocation.type)
+
+        // Create a script for Gaussian blur
+        val blurScript = ScriptIntrinsicBlur.create(rsContext, Element.U8_4(rsContext))
+
+        // Set the blur radius
+        blurScript.setRadius(radius)
+
+        // Perform the Gaussian blur operation
+        blurScript.setInput(inputAllocation)
+        blurScript.forEach(outputAllocation)
+
+        // Copy the blurred image from the output allocation to a new bitmap
+        val blurredBitmap = Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, imageBitmap.config)
+        outputAllocation.copyTo(blurredBitmap)
+
+        // Destroy the RenderScript context and resources
+        inputAllocation.destroy()
+        outputAllocation.destroy()
+        blurScript.destroy()
+        rsContext.destroy()
+
+        // Return the blurred image
+        return blurredBitmap
     }
 
     private fun isFormDataValid(): Boolean {
         return when {
             name.text.toString().isEmpty() -> {
                 name.error = "Enter name"
+                return false
+            }
+
+            name.text.length < 4 -> {
+                name.error = "Name should be more than 4 character"
                 return false
             }
 
@@ -75,6 +159,60 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
+            !dobDay.isValueWithinRange(1, 31)-> {
+                dobDay.error = "Invalid date of birth."
+                return false
+            }
+
+            !dobMonth.isValueWithinRange(1, 12) -> {
+                dobMonth.error = "Invalid date of month value."
+                return false
+            }
+
+            !dobYear.isValueWithinRange(1923, 2023) -> {
+                dobYear.error = "Invalid date of year value."
+                return false
+            }
+
+            landmark.text.toString().isEmpty() -> {
+                landmark.error = "Please enter valid landmark"
+                return false
+            }
+
+            district.text.toString().isEmpty() -> {
+                district.error = "Please enter valid district"
+                return false
+            }
+
+            zipcode.text.toString().isEmpty() -> {
+                zipcode.error = "Please enter zip code"
+                return false
+            }
+
+            zipcode.text.toString().length < 6 -> {
+                zipcode.error = "Please enter valid zip code"
+                return false
+            }
+
+            qualification.text.toString().isEmpty() -> {
+                qualification.error = "Please enter qualification"
+                return false
+            }
+
+            school.text.toString().isEmpty() -> {
+                school.error = "Please enter your school"
+                return false
+            }
+
+            grade.selectedItem.toString().equals("Select grade") -> {
+                Snackbar.make(grade, "Please select grade", Snackbar.LENGTH_LONG).show()
+                return false
+            }
+
+            course.selectedItem.toString().equals("Select course") -> {
+                Snackbar.make(course, "Please select course", Snackbar.LENGTH_LONG).show()
+                return false
+            }
 
             else -> true
         }

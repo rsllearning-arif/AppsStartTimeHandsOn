@@ -20,3 +20,13 @@ fun EditText.isPhoneNumberValid(): Boolean {
 
     return false
 }
+
+fun EditText.isValueWithinRange(lowRange: Int, highRange: Int): Boolean {
+    val text = this.text.toString()
+    if (text.isEmpty()) {
+        this.error = "Please enter date of birth"
+        return false
+    }
+
+    return text.toInt() in lowRange..highRange
+}

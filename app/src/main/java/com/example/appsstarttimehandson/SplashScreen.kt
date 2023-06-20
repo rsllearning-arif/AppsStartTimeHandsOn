@@ -11,10 +11,10 @@ class SplashScreen : AppCompatActivity() {
         setContentView(R.layout.activity_splash_screen)
 
         Handler().postDelayed({
-            // Start the main activity
+            // Start the main activity after the delay
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
-            finish() // Optional: Close the splash activity to prevent going back to it
+            finish()
         }, 1000)
     }
 }
