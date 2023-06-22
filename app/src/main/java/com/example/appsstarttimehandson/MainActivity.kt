@@ -13,11 +13,17 @@ import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
 import android.renderscript.ScriptIntrinsicBlur
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Spinner
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -61,7 +67,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupViews() {
         imageView = findViewById<ImageView?>(R.id.image_view).apply {
-            setImageBitmap(getImageAfterEdit())
+            val an = AnimationUtils.loadAnimation(this@MainActivity, R.anim.placeholder_animation)
+            this.startAnimation(an)
+
+            lifecycleScope.launch {
+                val bitmap = getImageAfterEdit()
+
+                clearAnimation()
+                setImageBitmap(bitmap)
+            }
         }
         name = findViewById(R.id.name)
         email = findViewById(R.id.email)
@@ -78,14 +92,16 @@ class MainActivity : AppCompatActivity() {
         course = findViewById(R.id.course_selection)
     }
 
-    private fun getImageAfterEdit(): Bitmap {
+    private suspend fun getImageAfterEdit(): Bitmap {
         // Heavy operation - image processing
-        val bitmap =  BitmapFactory.decodeResource(resources, R.drawable.college)
-        val filteredImage = applyFilter(bitmap)
-        return applyGaussianBlur(filteredImage, 10F)
+        return withContext(Dispatchers.IO) {
+            val initialBitmap = BitmapFactory.decodeResource(resources, R.drawable.college)
+            val filteredBitmap = applyFilter(initialBitmap)
+            applyGaussianBlur(filteredBitmap, 10F)
+        }
     }
 
-    private fun applyFilter(bitmap: Bitmap): Bitmap {
+    private suspend fun applyFilter(bitmap: Bitmap): Bitmap = coroutineScope {
         // Apply a grayscale filter to the image
         val matrix = ColorMatrix().apply {
             setSaturation(0f)
@@ -100,10 +116,10 @@ class MainActivity : AppCompatActivity() {
         val canvas = Canvas(editedBitmap)
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
-        return editedBitmap
+        editedBitmap
     }
 
-    private fun applyGaussianBlur(imageBitmap: Bitmap, radius: Float): Bitmap {
+    private suspend fun applyGaussianBlur(imageBitmap: Bitmap, radius: Float): Bitmap = coroutineScope {
         // Create a RenderScript context
         val rsContext = RenderScript.create(applicationContext)
 
@@ -134,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         rsContext.destroy()
 
         // Return the blurred image
-        return blurredBitmap
+        blurredBitmap
     }
 
     private fun isFormDataValid(): Boolean {
